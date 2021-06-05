@@ -52,6 +52,10 @@ def get_model(p, pretrain_path=None):
             from models.resnet_stl import resnet18
             backbone = resnet18()
         
+        elif p['train_db_name'] == 'thumbnail':  # for thumbnail dataset
+            from models.resnet_thumbnail import resnet18
+            backbone = resnet18()
+        
         else:
             raise NotImplementedError
 
@@ -128,6 +132,10 @@ def get_train_dataset(p, transform, to_augmented_dataset=False,
         from data.cifar import CIFAR20
         dataset = CIFAR20(train=True, transform=transform, download=True)
 
+    elif p['train_db_name'] == 'thumbnail':  # for thumbnail dataset
+        from data.thumbnail import Thumbnail
+        dataset = Thumbnail(split='train', transform=transform)
+
     elif p['train_db_name'] == 'stl-10':
         from data.stl import STL10
         dataset = STL10(split=split, transform=transform, download=True)
@@ -174,6 +182,10 @@ def get_val_dataset(p, transform=None, to_neighbors_dataset=False):
     elif p['val_db_name'] == 'imagenet':
         from data.imagenet import ImageNet
         dataset = ImageNet(split='val', transform=transform)
+
+    elif p['val_db_name'] == 'thumbnail':  # for thumbnail dataset
+        from data.thumbnail import Thumbnail
+        dataset = Thumbnail(split='val', transform=transform)
     
     elif p['val_db_name'] in ['imagenet_50', 'imagenet_100', 'imagenet_200']:
         from data.imagenet import ImageNetSubset
