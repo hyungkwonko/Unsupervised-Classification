@@ -18,7 +18,8 @@ criterion_kwargs:
    temperature: 0.1 
 
 # Hyperparameters
-epochs: 500
+# epochs: 500
+epochs: 100
 optimizer: sgd
 optimizer_kwargs:
    nesterov: False
@@ -28,15 +29,14 @@ optimizer_kwargs:
 scheduler: cosine
 scheduler_kwargs:
    lr_decay_rate: 0.1
-# batch_size: 512 
-batch_size: 128
+batch_size: 512
 num_workers: 8
 
 # Transformations
 augmentation_strategy: simclr 
 augmentation_kwargs:
    random_resized_crop:
-      size: 32  # 164
+      size: 96  # 164
       scale: [0.2, 1.0]
    color_jitter_random_apply:
       p: 0.8
@@ -52,7 +52,7 @@ augmentation_kwargs:
       std: [0.5, 0.5, 0.5]
 
 transformation_kwargs:
-   crop_size: 32  # 164
+   crop_size: 96  # 164
    normalize:
       mean: [0.5, 0.5, 0.5]
       std: [0.5, 0.5, 0.5]

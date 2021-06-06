@@ -140,5 +140,7 @@ cython_debug/
 
 results/
 data/cifar-10/*
-data/thumbnail/*
+data/thumbnail/train/*
+data/thumbnail/test/*
+data/thumbnail/val/*
 data/thumbnail_sample/*

@@ -77,11 +77,12 @@ class ResNet(nn.Module):
         self.conv1 = nn.Conv2d(in_channel, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.avgpool = nn.AvgPool2d(7, stride=1)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -111,7 +112,7 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.maxpool(F.relu(self.bn1(self.conv1(x))))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)

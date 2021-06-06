@@ -38,6 +38,7 @@ def main():
     model = get_model(p)
     print('Model is {}'.format(model.__class__.__name__))
     print('Model parameters: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1e6))
+    model = torch.nn.DataParallel(model)  # why not parallelize?
     print(model)
     model = model.cuda()
    
