@@ -10,7 +10,8 @@ import torchvision.transforms as transforms
 from data.augment import Augment, Cutout
 from utils.collate import collate_custom
 
- 
+PARALLEL_NOT_SET_FOR_SIMCLR = True
+
 def get_criterion(p):
     if p['criterion'] == 'simclr':
         from losses.losses import SimCLRLoss
@@ -89,7 +90,19 @@ def get_model(p, pretrain_path=None):
         state = torch.load(pretrain_path, map_location='cpu')
         
         if p['setup'] == 'scan': # Weights are supposed to be transfered from contrastive training
-            missing = model.load_state_dict(state, strict=False)
+
+            if PARALLEL_NOT_SET_FOR_SIMCLR:
+                from collections import OrderedDict
+                new_state_dict = OrderedDict()
+                
+                for k, v in state.items():
+                    k = k.replace('module.', '')
+                    new_state_dict[k] = v
+
+                missing = model.load_state_dict(new_state_dict, strict=False)
+            else:
+                missing = model.load_state_dict(state, strict=False)
+            
             assert(set(missing[1]) == {
                 'contrastive_head.0.weight', 'contrastive_head.0.bias', 
                 'contrastive_head.2.weight', 'contrastive_head.2.bias'}

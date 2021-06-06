@@ -20,6 +20,8 @@ FLAGS.add_argument('--visualize_prototypes', action='store_true',
                     help='Show the prototpye for each cluster')
 args = FLAGS.parse_args()
 
+PARALLEL_NOT_SET_FOR_SIMCLR = True
+
 def main():
     
     # Read config file
@@ -46,7 +48,18 @@ def main():
     state_dict = torch.load(args.model, map_location='cpu')
 
     if config['setup'] in ['simclr', 'moco', 'selflabel']:
-        model.load_state_dict(state_dict)
+
+        if PARALLEL_NOT_SET_FOR_SIMCLR:
+            from collections import OrderedDict
+            new_state_dict = OrderedDict()
+            
+            for k, v in state_dict.items():
+                k = k.replace('module.', '')
+                new_state_dict[k] = v
+
+            model.load_state_dict(new_state_dict)
+        else:
+            model.load_state_dict(state_dict)
 
     elif config['setup'] == 'scan':
         model.load_state_dict(state_dict['model'])
@@ -78,6 +91,12 @@ def main():
             _, acc = memory_bank.mine_nearest_neighbors(topk)
             print('Accuracy of top-{} nearest neighbors on validation set is {:.2f}'.format(topk, 100*acc))
 
+        if args.visualize_prototypes:
+            import numpy as np
+            out = np.load('./results/thumbnail/pretext/topk-val-neighbors.npy')
+
+            for k in range(15):
+                visualize_save_grid(out[k], dataset)
 
     elif config['setup'] in ['scan', 'selflabel']:
         print(colored('Perform evaluation of the clustering model (setup={}).'.format(config['setup']), 'blue'))
@@ -139,6 +158,27 @@ def visualize_indices(indices, dataset, hungarian_match):
         plt.axis('off')
         plt.imshow(img)
         plt.show()
+
+
+def visualize_save_grid(indices, dataset):
+    import numpy as np
+    from torchvision.utils import save_image
+    import os
+
+    path = './results/thumbnail/images'
+    if not os.path.exists:
+        os.makedirs(path)
+
+    imgs = []
+    for idx in indices:
+        img = np.array(dataset.get_image(idx)).astype(np.uint8)
+        # img = Image.fromarray(img)
+        imgs.append(img)
+    imgs = torch.tensor(imgs).permute(0, 3, 1, 2).float()
+
+    save_image(imgs, nrow=8, padding=2, normalize=True, fp=os.path.join(path, f"simclr_result_{idx}.jpg"))
+
+    print("[INFO] IMAGES SAVED!")
 
 
 if __name__ == "__main__":

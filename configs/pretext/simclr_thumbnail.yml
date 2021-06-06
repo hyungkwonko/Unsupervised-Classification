@@ -10,7 +10,7 @@ model_kwargs:
 # Dataset
 train_db_name: thumbnail
 val_db_name: thumbnail
-num_classes: 23  # should fix this
+num_classes: 23  # 23 classes (e.g., Comedy, Fantasy, ...)
 
 # Loss
 criterion: simclr

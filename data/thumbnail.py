@@ -26,7 +26,7 @@ class Thumbnail(datasets.ImageFolder):
         self.root = os.path.join(root, split)
         self.transform = transform 
         self.split = split
-        self.resize = tf.Resize(32)  # resize to 128 * 128 image
+        self.resize = tf.Resize(96)  # original image size: 164 --> 96
         self.classes = {
                             'Action': 0, 'All Ages': 1, 'Animals': 2, 'Comedy': 3, 'Crime/Mystery': 4,
                             'Drama': 5, 'Fantasy': 6, 'Heartwarming': 7, 'Historical': 8, 'Horror': 9,
@@ -89,24 +89,12 @@ class Thumbnail(datasets.ImageFolder):
                 }
             }
 
-        # print("====")
-        # print(img)
-        # print(target)
-        # print(im_size)
-        # print(index)
-        # print(genre)
-        # print(title_no)
-        # print("====")
-        # img.save(f"./{title_no}.jpg")
-
-        # exit()
-
         return out
 
-
-    # def get_image(self, index):
-    #     path, target = self.imgs[index]
-    #     with open(path, 'rb') as f:
-    #         img = Image.open(f).convert('RGB')
-    #     img = self.resize(img) 
-    #     return img
+    def get_image(self, index):
+        path = self.data_loc[index]
+        img = Image.open(path).convert("RGB")
+        with open(path, 'rb') as f:
+            img = Image.open(f).convert('RGB')
+        img = self.resize(img) 
+        return img
