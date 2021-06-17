@@ -68,11 +68,29 @@ def main():
     assert os.path.exists(p['pretext_checkpoint'])
     print(colored('Restart from checkpoint {}'.format(p['pretext_checkpoint']), 'blue'))
     checkpoint = torch.load(p['pretext_checkpoint'], map_location='cpu')
-    model.load_state_dict(checkpoint)
+
+    if p['setup'] in ['simclr', 'moco', 'selflabel']:
+
+        if PARALLEL_NOT_SET_FOR_SIMCLR:
+            from collections import OrderedDict
+            new_state_dict = OrderedDict()
+            
+            for k, v in checkpoint.items():
+                k = k.replace('module.', '')
+                new_state_dict[k] = v
+
+            model.load_state_dict(new_state_dict)
+        else:
+            model.load_state_dict(checkpoint)
+
+    elif p['setup'] == 'scan':
+        model.load_state_dict(checkpoint['model'])
+
+
     model.cuda()
     
     # Save model
-    torch.save(model.state_dict(), p['pretext_model'])
+    # torch.save(model.state_dict(), p['pretext_model'])
 
     # Mine the topk nearest neighbors at the very end (Train) 
     # These will be served as input to the SCAN loss.

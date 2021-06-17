@@ -54,10 +54,10 @@ def get_predictions(p, dataloader, model, return_features=False):
     ptr = 0
     for batch in dataloader:
         images = batch[key_].cuda(non_blocking=True)
-        bs = images.shape[0]
         res = model(images, forward_pass='return_all')
         output = res['output']
         if return_features:
+            bs = images.shape[0]
             features[ptr: ptr+bs] = res['features']
             ptr += bs
         for i, output_i in enumerate(output):
@@ -82,6 +82,32 @@ def get_predictions(p, dataloader, model, return_features=False):
         return out, features.cpu()
     else:
         return out
+
+
+@torch.no_grad()
+def get_predictions_sample(p, dataloader, model):
+    model.eval()
+    predictions = [[] for _ in range(p['num_heads'])]
+    probs = [[] for _ in range(p['num_heads'])]
+    paths = []
+
+    for batch in dataloader:
+        images = batch['image'].cuda(non_blocking=True)
+        res = model(images, forward_pass='return_all')
+        output = res['output']
+        for i, output_i in enumerate(output):
+            predictions[i].append(torch.argmax(output_i, dim=1))
+            probs[i].append(F.softmax(output_i, dim=1))
+        paths += batch['path']
+
+    predictions = [torch.cat(pred_, dim = 0).cpu() for pred_ in predictions]
+    probs = [torch.cat(prob_, dim=0).cpu() for prob_ in probs]
+    # paths = torch.cat(paths, dim=0)
+    # paths = paths[0]
+
+    out = [{'predictions': pred_, 'probabilities': prob_, "paths": paths} for pred_, prob_ in zip(predictions, probs)]
+
+    return out
 
 
 @torch.no_grad()

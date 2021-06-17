@@ -7,19 +7,18 @@ import torch
 import yaml
 from termcolor import colored
 from utils.common_config import get_val_dataset, get_val_transformations, get_val_dataloader,\
-                                get_model
-from utils.evaluate_utils import get_predictions, hungarian_evaluate
+                                get_model, get_test_dataset
+from utils.evaluate_utils import get_predictions, get_predictions_sample, hungarian_evaluate
 from utils.memory import MemoryBank 
-from utils.utils import fill_memory_bank
+from utils.utils import fill_memory_bank, single_image_inference
 from PIL import Image
+import pandas as pd
 import numpy as np
 import os
 
 FLAGS = argparse.ArgumentParser(description='Evaluate models from the model zoo')
 FLAGS.add_argument('--config_exp', help='Location of config file')
 FLAGS.add_argument('--model', help='Location where model is saved')
-FLAGS.add_argument('--visualize_prototypes', action='store_true', 
-                    help='Show the prototpye for each cluster')
 FLAGS.add_argument('--save_grid', action='store_true', help='Location where model is saved')
 args = FLAGS.parse_args()
 
@@ -35,9 +34,10 @@ def main():
     print(config)
 
     # Get dataset
-    print(colored('Get validation dataset ...', 'blue'))
+    print(colored('Get train dataset ...', 'blue'))
     transforms = get_val_transformations(config)
-    dataset = get_val_dataset(config, transforms)
+    dataset = get_test_dataset(config, transforms)
+    # dataset = get_val_dataset(config, transforms)
     dataloader = get_val_dataloader(config, dataset)
     print('Number of samples: {}'.format(len(dataset)))
 
@@ -89,36 +89,47 @@ def main():
         print('Fill Memory Bank')
         fill_memory_bank(dataloader, model, memory_bank)
 
-        print('Mine the nearest neighbors')
-        for topk in [1, 5, 20]: # Similar to Fig 2 in paper 
-            _, acc = memory_bank.mine_nearest_neighbors(topk)
-            print('Accuracy of top-{} nearest neighbors on validation set is {:.2f}'.format(topk, 100*acc))
+        import glob
+        dir_path = os.path.join('samples', '*.jpg')
+        IMG_NAMES = glob.glob(dir_path)
+        # IMG_NAMES = [os.path.join('samples', '544878_23_4_ori.jpg')]
 
-        if args.save_grid:
-            out = np.load(os.path.join('results', config['train_db_name'], config['setup'], 'topk-val-neighbors.npy'))
+        for IMG_NAME in IMG_NAMES:
+            output = single_image_inference(model, IMG_NAME)
+            # print(memory_bank.features.shape)
+            # print(output.shape)
+            print('Mine the nearest neighbors')
 
-            for k in range(15):
-                visualize_save_grid(out[k], dataset, config)
+            if args.save_grid:
+                TOPK = 7
+                indices = memory_bank.mine_nearest_neighbors_single_image(output, TOPK)
+                IMG_NAME = IMG_NAME.replace('samples/', '').replace('.jpg', '')
+                visualize_save_grid(indices[0], dataset, IMG_NAME)
 
     elif config['setup'] in ['scan', 'selflabel']:
         print(colored('Perform evaluation of the clustering model (setup={}).'.format(config['setup']), 'blue'))
         head = state_dict['head'] if config['setup'] == 'scan' else 0
-        predictions, features = get_predictions(config, dataloader, model, return_features=True)
-        clustering_stats = hungarian_evaluate(head, predictions, dataset.classes, 
-                                                compute_confusion_matrix=True)
+        out = get_predictions_sample(config, dataloader, model)
 
-        if args.visualize_prototypes:
-            prototype_indices = get_prototypes(config, predictions[head], features, model)
-            visualize_indices(prototype_indices, dataset, clustering_stats['hungarian_match'])
+        file = pd.DataFrame()
+        # print(len(out[0]['predictions']))
+        # print(len(out[0]['paths']))
+        file['class'] = out[0]['predictions']
+        file['path'] = out[0]['paths']
+        file.to_csv('./cluster_info.csv')
 
-        if args.save_grid:
-            PRINT_NO = 64
-            indices = predictions[head]['predictions'].numpy()
-            for i in range(23):  # save img by class
-                target_indices = np.where(indices == i)[0][:PRINT_NO]
-                # print(np.unique(predictions[head]['targets'].numpy()[target_indices], return_counts=True))
-                if len(target_indices) > 0:
-                    visualize_save_grid(target_indices, dataset, config, i)
+        for (cls, pth) in zip(file['class'], file['path']):
+            path = os.path.join('results', 'cluster_result', str(cls))
+            try:
+                os.makedirs(path)
+            except FileExistsError:
+                pass
+
+            image = Image.open(pth).convert("RGB")
+            pth = pth.replace('data/samples/0/', '')
+            # print(os.path.join(path, pth))
+            # print(str(cls))
+            image.save(os.path.join(path, pth))
     else:
         raise NotImplementedError
 
@@ -158,22 +169,12 @@ def get_prototypes(config, predictions, features, model, topk=10):
     proto_indices = proto_indices.int().tolist()
     return proto_indices
 
-def visualize_indices(indices, dataset, hungarian_match):
-    import matplotlib.pyplot as plt
 
-    for idx in indices:
-        img = np.array(dataset.get_image(idx)).astype(np.uint8)
-        img = Image.fromarray(img)
-        plt.figure()
-        plt.axis('off')
-        plt.imshow(img)
-        plt.show()
-
-
-def visualize_save_grid(indices, dataset, config, cls_no):
+def visualize_save_grid(indices, dataset, img_name):
     from torchvision.utils import save_image
 
-    path = os.path.join('results', config['train_db_name'], config['setup'], 'images')
+    path = os.path.join('samples')
+    # path = os.path.join(config['setup'], 'images')
 
     try:
         os.makedirs(path)
@@ -187,9 +188,9 @@ def visualize_save_grid(indices, dataset, config, cls_no):
         imgs.append(img)
     imgs = torch.tensor(imgs).permute(0, 3, 1, 2).float()
 
-    save_image(imgs, nrow=8, padding=2, normalize=True, fp=os.path.join(path, f"{config['setup']}_result_{cls_no}.jpg"))
+    save_image(imgs, nrow=8, padding=2, normalize=True, fp=os.path.join(path, f"{img_name}_result.jpg"))
 
-    print("[INFO] IMAGES SAVED!")
+    print(f"[INFO] {img_name} IMAGES SAVED!")
 
 
 if __name__ == "__main__":

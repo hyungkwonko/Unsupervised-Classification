@@ -1,18 +1,10 @@
-"""
-Author: Wouter Van Gansbeke, Simon Vandenhende
-Licensed under the CC BY-NC 4.0 license (https://creativecommons.org/licenses/by-nc/4.0/)
-"""
 import os
-import torch
 import torchvision.datasets as datasets
-import torch.utils.data as data
 from PIL import Image
 from utils.mypath import MyPath
 from torchvision import transforms as tf
 from glob import glob
 import pandas as pd
-import sys
-import numpy as np
 
 class Thumbnail(datasets.ImageFolder):
 
@@ -93,7 +85,7 @@ class Thumbnail(datasets.ImageFolder):
 
     def get_image(self, index):
         path = self.data_loc[index]
-        img = Image.open(path).convert("RGB")
+        # img = Image.open(path).convert("RGB")
         with open(path, 'rb') as f:
             img = Image.open(f).convert('RGB')
         img = self.resize(img) 

@@ -6,6 +6,10 @@ import os
 import torch
 import numpy as np
 import errno
+from PIL import Image
+from torchvision.transforms.transforms import CenterCrop
+import torchvision.transforms.functional as F
+
 
 def mkdir_if_missing(directory):
     if not os.path.exists(directory):
@@ -68,6 +72,40 @@ def fill_memory_bank(loader, model, memory_bank):
         memory_bank.update(output, targets)
         if i % 100 == 0:
             print('Fill Memory Bank [%d/%d]' %(i, len(loader)))
+
+class SquarePad:
+	def __call__(self, image):
+		w, h = image.size
+		max_wh = np.max([w, h])
+		hp = int((max_wh - w) / 2)
+		vp = int((max_wh - h) / 2)
+		padding = (hp, vp, hp, vp)
+		return F.pad(image, padding, 0, 'constant')
+
+@torch.no_grad()
+def single_image_inference(model, path):
+
+    from torchvision import transforms
+    transform = transforms.Compose([
+        # transforms.CenterCrop(),
+        # SquarePad(),
+        transforms.Resize(164),
+        transforms.CenterCrop(96),
+        # transforms.CenterCrop(164),
+        # transforms.Resize(96),
+        # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        # transforms.ToTensor()
+    ])
+
+    model.eval()
+
+    image = Image.open(path)
+    image = transform(image)
+    # image.save('./transformed_sample.jpg')
+    image = image.unsqueeze(0).cuda(non_blocking=True)
+    output = model(image)
+
+    return output
 
 
 def confusion_matrix(predictions, gt, class_names, output_file=None):

@@ -64,6 +64,18 @@ class MemoryBank(object):
         else:
             return indices
 
+    def mine_nearest_neighbors_single_image(self, single_feature, topk):
+        import faiss
+        features = self.features.cpu().numpy()
+        single_feature = single_feature.cpu().numpy()
+        dim = features.shape[1]
+        index = faiss.IndexFlatIP(dim)
+        index = faiss.index_cpu_to_all_gpus(index)
+        index.add(features)
+        _, indices = index.search(single_feature, topk+1) # Sample itself is included
+        
+        return indices
+
     def reset(self):
         self.ptr = 0 
         

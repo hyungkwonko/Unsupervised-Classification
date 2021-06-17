@@ -199,7 +199,7 @@ def get_val_dataset(p, transform=None, to_neighbors_dataset=False):
     elif p['val_db_name'] == 'thumbnail':  # for thumbnail dataset
         from data.thumbnail import Thumbnail
         dataset = Thumbnail(split='val', transform=transform)
-    
+
     elif p['val_db_name'] in ['imagenet_50', 'imagenet_100', 'imagenet_200']:
         from data.imagenet import ImageNetSubset
         subset_file = './data/imagenet_subsets/%s.txt' %(p['val_db_name'])
@@ -215,6 +215,16 @@ def get_val_dataset(p, transform=None, to_neighbors_dataset=False):
         dataset = NeighborsDataset(dataset, indices, 5) # Only use 5
 
     return dataset
+
+def get_test_dataset(p, transform=None):
+    if p['test_db_name'] == 'sample':
+        from data.sample import Sample
+        dataset = Sample(transform=transform)
+    else:
+        raise ValueError('Invalid validation dataset {}'.format(p['val_db_name']))
+    
+    return dataset
+
 
 
 def get_train_dataloader(p, dataset):

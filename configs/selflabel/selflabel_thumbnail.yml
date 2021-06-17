@@ -1,24 +1,25 @@
 # setup
-setup: scan
+setup: selflabel
+
+# ema
+use_ema: False
+
+# Threshold
+confidence_threshold: 0.99
 
 # Loss
-criterion: scan
+criterion: confidence-cross-entropy
 criterion_kwargs:
-   entropy_weight: 5.0
-
-# Weight update
-update_cluster_head_only: False # Update full network in SCAN
-num_heads: 1 # Only use one head
+   apply_class_balancing: True
 
 # Model
 backbone: resnet18
+num_heads: 1
 
 # Dataset
 train_db_name: thumbnail
 val_db_name: thumbnail
-test_db_name: sample
 num_classes: 23
-num_neighbors: 20
 
 # Transformations
 augmentation_strategy: ours 
@@ -45,8 +46,7 @@ optimizer_kwargs:
    lr: 0.0001
    weight_decay: 0.0001
 epochs: 100
-batch_size: 512
-# batch_size: 8
+batch_size: 1000
 num_workers: 8
 
 # Scheduler
